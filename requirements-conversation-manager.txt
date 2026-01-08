@@ -1,0 +1,16 @@
+# Augment Conversation Data Manager Requirements
+# Python 3.8+
+
+# PostgreSQL adapter
+psycopg2-binary==2.9.9
+
+# Redis client
+redis==5.0.1
+
+# Optional: For better performance
+# hiredis==2.3.2  # C parser for Redis protocol
+
+
+# Web API Server
+Flask==3.0.0
+flask-cors==4.0.0

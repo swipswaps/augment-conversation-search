@@ -1,0 +1,42 @@
+2026-01-07 14:50:30,446 | INFO | ============================================================
+2026-01-07 14:50:30,447 | INFO | PRF-COMPLIANT MIGRATION: Normalization for search_vector
+2026-01-07 14:50:30,447 | INFO | ============================================================
+2026-01-07 14:50:30,447 | INFO | Log file: prf_normalization_migration_20260107_145030.log
+
+2026-01-07 14:50:30,501 | INFO | 
+============================================================
+2026-01-07 14:50:30,501 | INFO | STEP: BEFORE: Trigger Function
+2026-01-07 14:50:30,502 | INFO | ============================================================
+2026-01-07 14:50:30,502 | INFO | Evidence:
+CREATE OR REPLACE FUNCTION public.chat_history_search_vector_trigger()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+        BEGIN
+            -- Extract response_text from JSONB content and create tsvector
+            NEW.search_vector := to_tsvector('english', 
+                COALESCE(NEW.content->>'response_text', '')
+            );
+            RETURN NEW;
+        END
+        $function$
+
+
+2026-01-07 14:50:30,502 | INFO | Updating trigger function with normalization...
+2026-01-07 14:50:30,770 | INFO | 
+============================================================
+2026-01-07 14:50:30,771 | INFO | STEP: Update trigger function
+2026-01-07 14:50:30,772 | INFO | ============================================================
+2026-01-07 14:50:30,773 | INFO | Evidence:
+Trigger function updated with normalization:
+  - lowercase conversion
+  - whitespace collapse (\s+ -> single space)
+  - trim leading/trailing whitespace
+
+2026-01-07 14:50:30,775 | INFO | Backfilling existing rows with normalized search_vector...
+2026-01-07 14:50:42,214 | ERROR | 
+❌ MIGRATION FAILED: operator does not exist: uuid = text
+LINE 7:         WHERE id = ANY(ARRAY['92f721aa-9fb9-4035-8b64-3e35cb...
+                         ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+

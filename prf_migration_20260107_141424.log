@@ -1,0 +1,125 @@
+2026-01-07 14:14:24,486 | INFO | ============================================================
+2026-01-07 14:14:24,486 | INFO | PRF-COMPLIANT MIGRATION: search_vector Column + Trigger
+2026-01-07 14:14:24,486 | INFO | ============================================================
+2026-01-07 14:14:24,486 | INFO | Log file: prf_migration_20260107_141424.log
+
+2026-01-07 14:14:24,537 | INFO | 
+============================================================
+2026-01-07 14:14:24,539 | INFO | STEP: BEFORE: chat_history schema
+2026-01-07 14:14:24,541 | INFO | ============================================================
+2026-01-07 14:14:24,542 | INFO | Evidence:
+  id                   uuid            nullable=NO  default=uuid_generate_v4()
+  conversation_id      uuid            nullable=YES default=None
+  message_index        integer         nullable=NO  default=None
+  role                 character varying nullable=NO  default=None
+  content              jsonb           nullable=NO  default=None
+  content_hash         character varying nullable=NO  default=None
+  timestamp            timestamp with time zone nullable=YES default=None
+  created_in_db        timestamp with time zone nullable=YES default=now()
+  search_vector        tsvector        nullable=YES default=None
+
+2026-01-07 14:14:24,542 | INFO | Adding search_vector column if not exists...
+2026-01-07 14:14:24,571 | INFO | 
+============================================================
+2026-01-07 14:14:24,573 | INFO | STEP: Add search_vector column
+2026-01-07 14:14:24,573 | INFO | ============================================================
+2026-01-07 14:14:24,573 | INFO | Evidence:
+Executed ALTER TABLE ADD COLUMN IF NOT EXISTS
+
+2026-01-07 14:14:24,573 | INFO | Creating trigger function...
+2026-01-07 14:14:24,579 | INFO | 
+============================================================
+2026-01-07 14:14:24,580 | INFO | STEP: Trigger function creation
+2026-01-07 14:14:24,582 | INFO | ============================================================
+2026-01-07 14:14:24,582 | INFO | Evidence:
+Function chat_history_search_vector_trigger() created/replaced
+
+2026-01-07 14:14:24,582 | INFO | Creating trigger...
+2026-01-07 14:14:24,584 | INFO | 
+============================================================
+2026-01-07 14:14:24,588 | INFO | STEP: Trigger creation
+2026-01-07 14:14:24,588 | INFO | ============================================================
+2026-01-07 14:14:24,588 | INFO | Evidence:
+Trigger trg_chat_history_search_vector created on chat_history
+
+2026-01-07 14:14:24,588 | INFO | Creating GIN index...
+2026-01-07 14:14:26,056 | INFO | 
+============================================================
+2026-01-07 14:14:26,057 | INFO | STEP: GIN index creation
+2026-01-07 14:14:26,057 | INFO | ============================================================
+2026-01-07 14:14:26,057 | INFO | Evidence:
+Index chat_history_search_vector_idx created
+
+2026-01-07 14:14:26,057 | INFO | Populating search_vector for existing rows...
+2026-01-07 14:14:37,958 | INFO | 
+============================================================
+2026-01-07 14:14:37,958 | INFO | STEP: Populate existing rows
+2026-01-07 14:14:37,958 | INFO | ============================================================
+2026-01-07 14:14:37,958 | INFO | Evidence:
+Total rows: 5590
+NULL before: 0
+NULL after: 0
+Updated: 0
+
+2026-01-07 14:14:37,975 | INFO | 
+✅ Migration committed successfully
+2026-01-07 14:14:37,981 | INFO | 
+============================================================
+2026-01-07 14:14:37,982 | INFO | STEP: AFTER: chat_history schema
+2026-01-07 14:14:37,982 | INFO | ============================================================
+2026-01-07 14:14:37,982 | INFO | Evidence:
+  id                   uuid            nullable=NO  default=uuid_generate_v4()
+  conversation_id      uuid            nullable=YES default=None
+  message_index        integer         nullable=NO  default=None
+  role                 character varying nullable=NO  default=None
+  content              jsonb           nullable=NO  default=None
+  content_hash         character varying nullable=NO  default=None
+  timestamp            timestamp with time zone nullable=YES default=None
+  created_in_db        timestamp with time zone nullable=YES default=now()
+  search_vector        tsvector        nullable=YES default=None
+
+2026-01-07 14:14:37,983 | INFO | Running end-to-end search test with query: 'button'
+2026-01-07 14:14:38,042 | INFO | 
+============================================================
+2026-01-07 14:14:38,042 | INFO | STEP: End-to-End Search Test
+2026-01-07 14:14:38,042 | INFO | ============================================================
+2026-01-07 14:14:38,043 | INFO | Evidence:
+Search query: 'button'
+Results found: 5
+
+Top 5 results:
+  1. ID=2de3b9d4-6a98-4902-875e-648ec9ef6e0f, rank=0.0982, text=## Discussion: How to Verify Buttons with Better OCR/Inspection
+
+---
+
+### Option 1: Try PaddleOCR (B...
+  2. ID=f8cef36b-6de3-48b6-948c-980bc6933600, rank=0.0973, text=Excellent! Now let me create a final corrected summary:
+
+---
+
+## ✅ CORRECTED FINAL SUMMARY
+
+**Thank ...
+  3. ID=36240e92-ccc7-4f2b-8687-8032a64c7bdf, rank=0.0967, text=## Critical Failure Acknowledgment
+
+**You are absolutely correct. I made the SAME mistake AGAIN.**
+
+...
+  4. ID=a3662884-40df-40e4-98fa-534ca2e0f098, rank=0.0965, text=## Reworded Request (Following Rules)
+
+"The command executed but I did NOT click the 'Jump to Debug ...
+  5. ID=fd341893-ba6d-41bc-a531-c418c0ea22fe, rank=0.0965, text=**Evidence:**
+
+### ✅ PROGRESS: All header buttons now VISIBLE in viewport!
+
+**Before fix:**
+- Login ...
+
+
+2026-01-07 14:14:38,043 | INFO | 
+✅ END-TO-END SEARCH TEST PASSED
+2026-01-07 14:14:38,043 | INFO | 
+============================================================
+2026-01-07 14:14:38,044 | INFO | MIGRATION COMPLETE
+2026-01-07 14:14:38,044 | INFO | ============================================================
+2026-01-07 14:14:38,044 | INFO | Full evidence saved to: prf_migration_20260107_141424.log

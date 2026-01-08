@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Augment Conversation Manager</title>
+    
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .header .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .search-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .search-bar input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .search-bar input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .conversations-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .conversation-item {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .conversation-item:hover {
+            background: #f9f9f9;
+        }
+        .conversation-item:last-child {
+            border-bottom: none;
+        }
+        .conversation-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .conversation-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        .conversation-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-size: 20px;
+        }
+        .close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .message.user {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .message.assistant {
+            background: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+        .message-role {
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-size: 12px;
+            color: #666;
+        }
+        .message-content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .debug-console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .debug-console .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #4caf50;
+        }
+        .debug-console .log-entry.error {
+            border-left-color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+        .debug-console .log-entry.warn {
+            border-left-color: #ff9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+        .debug-console .log-entry.info {
+            border-left-color: #2196f3;
+            background: rgba(33, 150, 243, 0.1);
+        }
+        .debug-console .timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+        .debug-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 20px;
+        }
+        .debug-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        /* Search Results Styles - ELITE UX */
+        .search-result-group {
+            margin-bottom: 2rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s;
+        }
+        .search-result-group:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .search-result-group.top-conversation {
+            border: 2px solid #4caf50;
+            box-shadow: 0 4px 12px rgba(76,175,80,0.2);
+        }
+        .conversation-header {
+            background: linear-gradient(to right, #f5f5f5 0%, #fafafa 100%);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #007bff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .conversation-header:hover {
+            background: linear-gradient(to right, #e8e8e8 0%, #efefef 100%);
+        }
+        .top-conversation .conversation-header {
+            background: linear-gradient(to right, #e8f5e9 0%, #f1f8f4 100%);
+            border-bottom: 3px solid #4caf50;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .conversation-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .match-count {
+            background: #007bff;
+            color: white;
+            padding: 0.3rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .message-match {
+            padding: 1rem;
+            border-top: 1px solid #eee;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .message-match:first-of-type {
+            border-top: none;
+        }
+        .message-match:hover {
+            background: #f9f9f9;
+            transform: translateX(2px);
+        }
+        .message-match.top-result {
+            background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+            border-left: 4px solid #007bff;
+            padding-left: calc(1rem - 4px);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+        }
+        .message-match.top-result .message-snippet {
+            font-weight: 500;
+        }
+        .message-match.keyboard-selected {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 50%, white 100%);
+            border-left: 5px solid #2196f3;
+            padding-left: calc(1rem - 5px);
+            box-shadow: inset 0 0 0 2px #2196f3;
+        }
+        .relevance-badge {
+            color: #28a745;
+            font-weight: 700;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        /* Message result layout - GitHub/Slack style */
+        .message-result {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .role-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .role-label {
+            font-weight: 600;
+            color: #007bff;
+        }
+        .timestamp {
+            color: #999;
+            margin-left: auto;
+            font-size: 0.8rem;
+            cursor: help;
+        }
+
+        /* ChatGPT FIX 5: Confidence badges for match quality */
+        .confidence-badge {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: help;
+        }
+        .confidence-badge.medium {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+        }
+        .confidence-badge.low {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* ChatGPT FIX 5: Snippet notes for UX transparency */
+        .snippet-note {
+            font-size: 0.85rem;
+            color: #666;
+            background: #f0f7ff;
+            padding: 0.4rem 0.6rem;
+            border-left: 3px solid #0366d6;
+            margin: 0.3rem 0;
+            border-radius: 3px;
+        }
+
+        /* Snippet styling - code vs prose */
+        .message-snippet {
+            line-height: 1.6;
+            color: #333;
+            font-size: 0.95rem;
+            padding-left: 1.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .code-snippet .message-snippet {
+            background: #f6f8fa;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border-left: 3px solid #0366d6;
+            margin-left: 1.5rem;
+        }
+        .prose-snippet .message-snippet {
+            padding-left: 1.5rem;
+        }
+
+        /* Keyword highlighting - GitHub style */
+        mark {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 0.1rem 0.2rem;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+        .snippet-text mark {
+            background: #ffeb3b;
+            font-weight: bold;
+            padding: 0.15rem 0.3rem;
+            border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(255,235,59,0.3);
+        }
+        
+        /* Enhanced code snippet styling */
+        .snippet-code {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            line-height: 1.6;
+            border-left: 4px solid #007acc;
+            position: relative;
+            margin: 0.5rem 0;
+        }
+        .snippet-code mark {
+            background: #ffd700;
+            color: #000;
+            font-weight: bold;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+        .snippet-code pre {
+            margin: 0;
+            background: transparent;
+        }
+        .snippet-code code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        
+        /* Enhanced prose snippet styling */
+        .snippet-prose {
+            background: #f8f9fa;
+            color: #2c3e50;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 0.95rem;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            line-height: 1.7;
+            border-left: 4px solid #28a745;
+            margin: 0.5rem 0;
+        }
+        .snippet-prose mark {
+            background: #ffeb3b;
+            color: #000;
+            font-weight: 600;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(255, 235, 59, 0.4);
+        }
+        
+        /* Copy button for code snippets */
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s;
+        }
+        .snippet-code:hover .copy-button {
+            opacity: 1;
+        }
+        .copy-button:hover {
+            background: #005a9e;
+        }
+        .copy-button:active {
+            background: #004578;
+        }
+        .copy-button.copied {
+            background: #28a745;
+        }
+        
+        /* Expand/collapse for snippets */
+        .snippet-container {
+            position: relative;
+        }
+        .snippet-expanded {
+            max-height: none !important;
+        }
+        .expand-button {
+            background: linear-gradient(to bottom, transparent, #fff);
+            padding: 1.5rem 0 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            color: #007bff;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-radius: 0 0 6px 6px;
+            transition: all 0.2s;
+        }
+        .expand-button:hover {
+            color: #0056b3;
+            background: linear-gradient(to bottom, transparent, #f0f7ff);
+        }
+        
+        /* Language badge for code */
+        .language-badge {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: #d4d4d4;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+            font-size: 1.1rem;
+        }
+        .show-more {
+            padding: 0.75rem 1rem;
+            text-align: center;
+            background: linear-gradient(to bottom, #f5f5f5 0%, #fafafa 100%);
+            color: #007bff;
+            cursor: pointer;
+            font-weight: 600;
+            border-top: 1px solid #eee;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .show-more:hover {
+            background: linear-gradient(to bottom, #e8e8e8 0%, #efefef 100%);
+            color: #0056b3;
+        }
+        .expand-icon {
+            font-size: 0.75rem;
+            transition: transform 0.2s;
+        }
+        .show-more:hover .expand-icon {
+            transform: translateY(2px);
+        }
+        .hidden-matches {
+            display: none;
+        }
+
+        /* UX-SEARCH-006: UX Failure Signaling */
+        .ux-banner {
+            padding: 12px 16px;
+            margin: 0 0 16px 0;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .ux-banner.degraded {
+            background: #3b1f1f;
+            color: #ffb3b3;
+            border: 2px solid #ff6b6b;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+        }
+        .ux-banner small {
+            display: block;
+            font-weight: normal;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        /* UX-SEARCH-007: Query Explanation Widget */
+        .query-explain {
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 4px;
+            background: rgba(33, 150, 243, 0.08);
+            border-left: 4px solid #2196f3;
+            color: #1565c0;
+            line-height: 1.6;
+        }
+        .query-explain code {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .query-explain small {
+            font-size: 0.9em;
+            line-height: 1.8;
+        }
+
+        /* UX-SEARCH-006: Ranking Delta Widget */
+        .ranking-delta {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-left: 4px solid #ccc;
+        }
+        .ranking-delta.good {
+            color: #2d7a2d;
+            border-left-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        .ranking-delta.warn {
+            color: #b8860b;
+            border-left-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        .ranking-delta.bad {
+            color: #c62828;
+            border-left-color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+        .ranking-delta small {
+            display: block;
+            font-size: 0.8rem;
+            margin-top: 2px;
+            opacity: 0.8;
+        }
+
+        /* Blocked Results (degraded UX state) */
+        .blocked-results {
+            opacity: 0.6;
+            font-style: italic;
+            padding: 16px;
+            text-align: center;
+            color: #999;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>🚀 Augment Conversation Manager</h1>
+                <div class="stats" id="stats">
+                    <span>📊 Loading statistics...</span>
+                </div>
+            </div>
+            <button class="debug-toggle" onclick="toggleDebugConsole()">🐛 Toggle Debug Console</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="debug-console" id="debugConsole" style="display: none;">
+            <div style="margin-bottom: 10px; font-weight: bold; color: #4caf50;">📋 Debug Console</div>
+            <div id="debugLogs"></div>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 Search messages... (↑↓ to navigate, Enter to open, Esc to clear)">
+        </div>
+
+        <!-- UX-SEARCH-006: UX Failure Banner -->
+        <div id="ux-banner" class="ux-banner" style="display:none;"></div>
+
+        <!-- UX-SEARCH-007: Query Explanation Widget -->
+        <div id="query-explain" class="query-explain"></div>
+
+        <!-- MODERN UX: Did You Mean Widget -->
+        <div id="did-you-mean" style="margin-bottom: 12px;"></div>
+
+        <!-- UX-SEARCH-006: Ranking Delta Widget -->
+        <div id="ranking-delta" class="ranking-delta"></div>
+
+        <div class="conversations-list" id="conversationsList">
+            <div class="loading">Loading conversations...</div>
+        </div>
+    </div>
+
+    <div class="modal" id="conversationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Conversation</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading">Loading messages...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    
+    <script src="app.js?v=6"></script>
+</body>
+</html>
+

@@ -1,0 +1,180 @@
+2026-01-07 14:52:55,889 | INFO | ============================================================
+2026-01-07 14:52:55,890 | INFO | PRF-COMPLIANT MIGRATION: Normalization for search_vector
+2026-01-07 14:52:55,890 | INFO | ============================================================
+2026-01-07 14:52:55,891 | INFO | Log file: prf_normalization_migration_20260107_145255.log
+
+2026-01-07 14:52:55,921 | INFO | 
+============================================================
+2026-01-07 14:52:55,921 | INFO | STEP: BEFORE: Trigger Function
+2026-01-07 14:52:55,921 | INFO | ============================================================
+2026-01-07 14:52:55,921 | INFO | Evidence:
+CREATE OR REPLACE FUNCTION public.chat_history_search_vector_trigger()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+        BEGIN
+            -- Extract response_text from JSONB content and create tsvector
+            NEW.search_vector := to_tsvector('english', 
+                COALESCE(NEW.content->>'response_text', '')
+            );
+            RETURN NEW;
+        END
+        $function$
+
+
+2026-01-07 14:52:55,921 | INFO | Updating trigger function with normalization...
+2026-01-07 14:52:55,924 | INFO | 
+============================================================
+2026-01-07 14:52:55,924 | INFO | STEP: Update trigger function
+2026-01-07 14:52:55,924 | INFO | ============================================================
+2026-01-07 14:52:55,924 | INFO | Evidence:
+Trigger function updated with normalization:
+  - lowercase conversion
+  - whitespace collapse (\s+ -> single space)
+  - trim leading/trailing whitespace
+
+2026-01-07 14:52:55,924 | INFO | Backfilling existing rows with normalized search_vector...
+2026-01-07 14:53:05,951 | INFO | 
+============================================================
+2026-01-07 14:53:05,951 | INFO | STEP: Backfill existing rows
+2026-01-07 14:53:05,952 | INFO | ============================================================
+2026-01-07 14:53:05,952 | INFO | Evidence:
+Total rows updated: 5590
+
+Sample BEFORE/AFTER comparison:
+
+  Sample 1:
+    ID: 92f721aa-9fb9-4035-8b64-3e35cbbbcf01
+    Text preview: OK....
+    BEFORE: 'ok':1...
+    AFTER:  'ok':1...
+
+  Sample 2:
+    ID: 07c48f6d-c197-49d1-b99b-9bba36c9a4a2
+    Text preview: Now let me create a comprehensive summary document...
+    BEFORE: '0':36 '2':19 '5':47 'analysi':59 'analyz':41 'appli':31 'base':60 'checkabl':55...
+    AFTER:  '0':36 '2':19 '5':47 'analysi':59 'analyz':41 'appli':31 'base':60 'checkabl':55...
+
+  Sample 3:
+    ID: 1e0046b1-3b7a-4f08-96d7-dc1e3383abfa
+    Text preview: OK....
+    BEFORE: 'ok':1...
+    AFTER:  'ok':1...
+
+
+2026-01-07 14:53:05,963 | INFO | 
+✅ Migration committed successfully
+2026-01-07 14:53:05,965 | INFO | 
+============================================================
+2026-01-07 14:53:05,966 | INFO | STEP: AFTER: Trigger Function
+2026-01-07 14:53:05,966 | INFO | ============================================================
+2026-01-07 14:53:05,967 | INFO | Evidence:
+CREATE OR REPLACE FUNCTION public.chat_history_search_vector_trigger()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+        DECLARE
+            normalized_text text;
+        BEGIN
+            -- Normalize: remove extra whitespace, lowercase
+            -- Note: to_tsvector already handles lowercasing and some normalization,
+            -- but we add explicit whitespace normalization for consistency
+            normalized_text := regexp_replace(
+                lower(COALESCE(NEW.content->>'response_text', '')),
+                '\s+',
+                ' ',
+                'g'
+            );
+            
+            -- Trim leading/trailing whitespace
+            normalized_text := trim(normalized_text);
+            
+            NEW.search_vector := to_tsvector('english', normalized_text);
+            RETURN NEW;
+        END
+        $function$
+
+
+2026-01-07 14:53:05,967 | INFO | Running end-to-end search tests with normalization...
+2026-01-07 14:53:06,135 | INFO | 
+============================================================
+2026-01-07 14:53:06,136 | INFO | STEP: End-to-End Search Tests
+2026-01-07 14:53:06,136 | INFO | ============================================================
+2026-01-07 14:53:06,137 | INFO | Evidence:
+
+Query: 'button'
+Results found: 3
+Top 3 results:
+  1. rank=0.0982, text=## Discussion: How to Verify Buttons with Better OCR/Inspection
+
+---
+
+### Option...
+  2. rank=0.0973, text=Excellent! Now let me create a final corrected summary:
+
+---
+
+## ✅ CORRECTED FIN...
+  3. rank=0.0967, text=## Critical Failure Acknowledgment
+
+**You are absolutely correct. I made the SAM...
+
+Query: 'BUTTON'
+Results found: 3
+Top 3 results:
+  1. rank=0.0982, text=## Discussion: How to Verify Buttons with Better OCR/Inspection
+
+---
+
+### Option...
+  2. rank=0.0973, text=Excellent! Now let me create a final corrected summary:
+
+---
+
+## ✅ CORRECTED FIN...
+  3. rank=0.0967, text=## Critical Failure Acknowledgment
+
+**You are absolutely correct. I made the SAM...
+
+Query: '  button  '
+Results found: 3
+Top 3 results:
+  1. rank=0.0982, text=## Discussion: How to Verify Buttons with Better OCR/Inspection
+
+---
+
+### Option...
+  2. rank=0.0973, text=Excellent! Now let me create a final corrected summary:
+
+---
+
+## ✅ CORRECTED FIN...
+  3. rank=0.0967, text=## Critical Failure Acknowledgment
+
+**You are absolutely correct. I made the SAM...
+
+Query: 'buttons'
+Results found: 3
+Top 3 results:
+  1. rank=0.0982, text=## Discussion: How to Verify Buttons with Better OCR/Inspection
+
+---
+
+### Option...
+  2. rank=0.0973, text=Excellent! Now let me create a final corrected summary:
+
+---
+
+## ✅ CORRECTED FIN...
+  3. rank=0.0967, text=## Critical Failure Acknowledgment
+
+**You are absolutely correct. I made the SAM...
+
+
+2026-01-07 14:53:06,137 | INFO | 
+✅ ALL END-TO-END SEARCH TESTS PASSED
+2026-01-07 14:53:06,138 | INFO | 
+============================================================
+2026-01-07 14:53:06,138 | INFO | MIGRATION COMPLETE
+2026-01-07 14:53:06,138 | INFO | ============================================================
+2026-01-07 14:53:06,139 | INFO | Full evidence saved to: prf_normalization_migration_20260107_145255.log
